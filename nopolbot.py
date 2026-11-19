@@ -35,7 +35,7 @@ inflight = {"event": asyncio.Event(), "text": None}
 
 # Balasan bot = markdown ringan: **Kunci:** `nilai`, header **HASIL n**, footer etika.
 # Diubah jadi objek data bersih; footer etika bot dibuang.
-_KV = re.compile(r"^\*\*(.+?)\*\*:\s*(?:`([^`]*)`|(.+))$")
+_KV = re.compile(r"^\*\*(.+?)\*\*:?\s*(?:`([^`]*)`|(.+))$")
 _HASIL = re.compile(r"^\*\*HASIL.*\*\*$", re.I)
 _FOOTER = re.compile(r"^\s*[🛡️⚙️]")
 _EMPTY = {"—", "-", ""}
@@ -57,7 +57,7 @@ def parse_reply(text):
             continue
         m = _KV.match(line)
         if m:
-            key = m.group(1).strip()
+            key = m.group(1).rstrip(":").strip()
             val = (m.group(2) if m.group(2) is not None else (m.group(3) or "")).strip()
             if val in _EMPTY:
                 val = None
