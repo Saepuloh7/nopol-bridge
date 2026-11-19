@@ -12,6 +12,7 @@ Self-check tanpa jaringan: python nopolbot.py --selfcheck
 import asyncio
 import json
 import os
+import re
 import sys
 import threading
 import urllib.parse
@@ -31,6 +32,42 @@ queue: asyncio.Queue = asyncio.Queue()
 # Bot tidak membalas dengan ID korelasi; paralel = risiko balasan tertukar.
 # Upgrade: inline query / korelasi isi pesan bila bot mendukung.
 inflight = {"event": asyncio.Event(), "text": None}
+
+# Balasan bot = markdown ringan: **Kunci:** `nilai`, header **HASIL n**, footer etika.
+# Diubah jadi objek data bersih; footer etika bot dibuang.
+_KV = re.compile(r"^\*\*(.+?)\*\*:\s*(?:`([^`]*)`|(.+))$")
+_HASIL = re.compile(r"^\*\*HASIL.*\*\*$", re.I)
+_FOOTER = re.compile(r"^\s*[🛡️⚙️]")
+_EMPTY = {"—", "-", ""}
+
+
+def parse_reply(text):
+    """Kembalikan dict (1 hasil), list dict (N hasil), atau None bila tak terbaca."""
+    if not text:
+        return None
+    clean = "\n".join(l for l in text.splitlines() if not _FOOTER.match(l)).strip()
+    groups, cur = [], None
+    for raw in clean.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if _HASIL.match(line):
+            cur = {}
+            groups.append(cur)
+            continue
+        m = _KV.match(line)
+        if m:
+            key = m.group(1).strip()
+            val = (m.group(2) if m.group(2) is not None else (m.group(3) or "")).strip()
+            if val in _EMPTY:
+                val = None
+            if cur is None:
+                cur = {}
+                groups.append(cur)
+            cur[key] = val
+    if not groups or not any(groups):
+        return None
+    return groups[0] if len(groups) == 1 else groups
 
 
 class State:
@@ -61,7 +98,12 @@ async def worker():
             await client.send_message(BOT, text)
             try:
                 await asyncio.wait_for(inflight["event"].wait(), TIMEOUT)
-                result = {"ok": True, "reply": inflight["text"]}
+                data = parse_reply(inflight["text"])
+                if data is not None:
+                    result = {"ok": True, "data": data}
+                else:
+                    # balasan non-standar (menu panduan, error bot) -> teks mentah
+                    result = {"ok": True, "reply": inflight["text"]}
             except asyncio.TimeoutError:
                 result = {"ok": False, "error": f"timeout {TIMEOUT}s: bot tidak membalas"}
         except Exception as e:
@@ -166,7 +208,11 @@ if __name__ == "__main__":
 
             async def send_message(self, bot, text):
                 await asyncio.sleep(0.01)
-                inflight["text"] = "REPLY:" + text
+                inflight["text"] = (
+                    "**HASIL 1**\n**TNKB:** `AD 1337 AD`\n"
+                    "**Pemilik:** `TEST OWNER`\n**NIK:** `\u2014`\n"
+                    "🛡️ __Gunakan data secara bijak, etis, dan sesuai hukum.__"
+                )
                 inflight["event"].set()
 
             async def run_until_disconnected(self):
@@ -184,14 +230,17 @@ if __name__ == "__main__":
                 f"http://127.0.0.1:{PORT}/send?text=tes", timeout=10
             ).read()
             data = json.loads(body)
-            assert data["ok"] is True and data["reply"] == "REPLY:tes", data
+            assert data["ok"] is True and data["data"]["TNKB"] == "AD 1337 AD", data
+            assert data["data"]["Pemilik"] == "TEST OWNER", data
+            assert data["data"]["NIK"] is None, data
+            assert "reply" not in data and "Gunakan data" not in json.dumps(data), data
             h = urllib.request.urlopen(f"http://127.0.0.1:{PORT}/health", timeout=10)
             assert json.loads(h.read())["connected"] is True
             body = urllib.request.urlopen(
                 f"http://127.0.0.1:{PORT}/nopol?nopol=AD1337AD", timeout=10
             ).read()
             data = json.loads(body)
-            assert data["ok"] is True and data["reply"] == "REPLY:/nopol AD1337AD", data
+            assert data["ok"] is True and data["data"]["TNKB"] == "AD 1337 AD", data
             try:
                 urllib.request.urlopen(f"http://127.0.0.1:{PORT}/nik?nik=123", timeout=10)
                 raise AssertionError("harusnya 400 untuk nik 3 digit")
