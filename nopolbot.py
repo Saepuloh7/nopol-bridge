@@ -72,8 +72,9 @@ async def worker():
 
 
 # perintah bot (@nopol_robot) -> (perintah, nama parameter query)
+# sumber: balasan PANDUAN PENCARIAN dari bot itu sendiri
 COMMANDS = {
-    "/nopul": ("/nopul", "nopol"),
+    "/nopol": ("/nopol", "nopol"),
     "/noka": ("/noka", "rangka"),
     "/nosin": ("/nosin", "mesin"),
     "/nik": ("/nik", "nik"),
@@ -137,7 +138,7 @@ async def main():
         print(f"peringatan: bot @{BOT} tidak ditemukan ({e})")
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
-    print(f"http://127.0.0.1:{PORT}/send?text=...")
+    print(f"http://127.0.0.1:{PORT}/nopol?nopol=... | /noka | /nosin | /nik | /nama | /send?text= | /health")
     await client.run_until_disconnected()
 
 
@@ -187,10 +188,10 @@ if __name__ == "__main__":
             h = urllib.request.urlopen(f"http://127.0.0.1:{PORT}/health", timeout=10)
             assert json.loads(h.read())["connected"] is True
             body = urllib.request.urlopen(
-                f"http://127.0.0.1:{PORT}/nopul?nopol=AD1337AD", timeout=10
+                f"http://127.0.0.1:{PORT}/nopol?nopol=AD1337AD", timeout=10
             ).read()
             data = json.loads(body)
-            assert data["ok"] is True and data["reply"] == "REPLY:/nopul AD1337AD", data
+            assert data["ok"] is True and data["reply"] == "REPLY:/nopol AD1337AD", data
             try:
                 urllib.request.urlopen(f"http://127.0.0.1:{PORT}/nik?nik=123", timeout=10)
                 raise AssertionError("harusnya 400 untuk nik 3 digit")

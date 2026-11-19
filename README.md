@@ -33,7 +33,7 @@ nohup python3 nopolbot.py > nopol.log 2>&1 &
 
 | Endpoint | Kirim ke bot |
 |---|---|
-| `GET /nopul?nopol=AD1337AD` | `/nopul AD1337AD` |
+| `GET /nopol?nopol=AD1337AD` | `/nopol AD1337AD` |
 | `GET /noka?rangka=NOMOR_RANGKA` | `/noka NOMOR_RANGKA` |
 | `GET /nosin?mesin=NOMOR_MESIN` | `/nosin NOMOR_MESIN` |
 | `GET /nik?nik=16DIGIT` | `/nik 16DIGIT` (wajib 16 digit) |
